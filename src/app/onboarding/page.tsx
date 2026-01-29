@@ -1,9 +1,10 @@
 // src/app/onboarding/page.tsx
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { OnboardingForm } from "./onboarding-form";
-import { Zap, Sparkles } from "lucide-react";
+import { Zap } from "lucide-react";
 
 export const metadata = {
   title: "Welcome to VAMP",
@@ -11,18 +12,20 @@ export const metadata = {
 };
 
 export default async function OnboardingPage() {
-  const session = await getSession();
+  const session = await getServerSession(authOptions);
 
+  // If not logged in, redirect to sign-in
   if (!session?.user?.id) {
-    redirect("/api/auth/signin?callbackUrl=/onboarding");
+    redirect("/sign-in?callbackUrl=/onboarding");
   }
 
-  // Check if user already has a role
+  // Check if user already has a role directly from database
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { role: true },
   });
 
+  // If user already has a role, redirect to home
   if (user?.role) {
     redirect("/");
   }

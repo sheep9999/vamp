@@ -1,7 +1,7 @@
 // src/app/submit/page.tsx
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { ProjectForm } from "@/components/projects/project-form";
 import { Zap, Sparkles } from "lucide-react";
@@ -51,8 +51,8 @@ export default async function SubmitPage() {
   // Filter out expired grants and convert Decimal to number
   const now = new Date();
   const grantsForForm = grants
-    .filter((g) => !g.deadline || new Date(g.deadline) >= now)
-    .map((g) => ({
+    .filter((g: { deadline: Date | null }) => !g.deadline || new Date(g.deadline) >= now)
+    .map((g: { id: string; title: string; amount: any }) => ({
       id: g.id,
       title: g.title,
       amount: Number(g.amount),
@@ -80,6 +80,13 @@ export default async function SubmitPage() {
           community and get feedback from fellow makers.
         </p>
       </div>
+
+      {/* Debug info - remove in production */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="mb-4 p-3 rounded bg-blue-50 border border-blue-200 text-blue-800 text-sm">
+          Debug: Found {grantsForForm.length} active grants
+        </div>
+      )}
 
       {/* Form Card */}
       <div className="vamp-card p-6 md:p-8 animate-in" style={{ animationDelay: "0.1s" }}>

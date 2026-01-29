@@ -1,7 +1,7 @@
 // src/app/grants/page.tsx
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth-options";
 import { GrantCard } from "@/components/grants/grant-card";
 import { Gift, Plus, Sparkles, TrendingUp } from "lucide-react";
 import Link from "next/link";

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth-options";
 import { UpvoteButton } from "@/components/projects/upvote-button";
 import { ShareButton } from "@/components/projects/share-button";
 import { CommentSection } from "@/components/comments/comment-section";

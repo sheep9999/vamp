@@ -1,7 +1,7 @@
 // src/app/forum/new/page.tsx
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth-options";
 import { NewThreadForm } from "@/components/forum/new-thread-form";
 import { MessageSquare, ArrowLeft } from "lucide-react";
 import Link from "next/link";

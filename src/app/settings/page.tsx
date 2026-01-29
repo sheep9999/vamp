@@ -1,7 +1,7 @@
 // src/app/settings/page.tsx
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "./settings-form";
 import { Settings, User } from "lucide-react";
