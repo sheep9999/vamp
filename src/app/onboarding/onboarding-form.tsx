@@ -1,8 +1,9 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { setUserRole, type OnboardingState } from "@/actions/users";
 import { Code2, Wallet, ArrowRight, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,17 +38,32 @@ function SubmitButton({ role }: { role: string }) {
 
 export function OnboardingForm({ userName }: OnboardingFormProps) {
   const router = useRouter();
+  const { update } = useSession();
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [state, formAction] = useFormState<OnboardingState | null, FormData>(
     setUserRole,
     null
   );
 
   useEffect(() => {
-    if (state?.success) {
-      router.push("/");
-      router.refresh();
+    if (state?.success && !isRedirecting) {
+      setIsRedirecting(true);
+      // Update the session to reflect the new role, then redirect
+      update().then(() => {
+        // Use window.location for a full page reload to avoid stale session
+        window.location.href = "/";
+      });
     }
-  }, [state, router]);
+  }, [state, update, isRedirecting]);
+
+  if (isRedirecting) {
+    return (
+      <div className="text-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--vamp-orange)] mx-auto mb-4" />
+        <p className="text-[var(--vamp-grey)]">Setting up your account...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
