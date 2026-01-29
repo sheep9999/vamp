@@ -1,0 +1,368 @@
+// prisma/schema.prisma
+// VAMP - Vibecoding Community Platform Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  VIBECODER // Regular user who submits projects
+  SPONSOR   // Sponsor who can create grants
+  ADMIN     // Platform administrator
+}
+
+enum GrantStatus {
+  DRAFT      // Not yet published
+  OPEN       // Accepting applications
+  REVIEWING  // Applications under review
+  AWARDED    // Grant has been awarded
+  CLOSED     // No longer accepting applications
+}
+
+enum ProjectStatus {
+  DRAFT      // Work in progress, not visible
+  PUBLISHED  // Visible to all users
+  FEATURED   // Highlighted by admins
+  ARCHIVED   // No longer active
+}
+
+enum ProjectCategory {
+  ENGINEERING
+  LLMS
+  PRODUCTIVITY
+  MARKETING
+  DESIGN
+  SOCIAL
+  FINANCE
+  AI_AGENTS
+  OTHER
+}
+
+// ============================================
+// USER MODEL
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  bio           String?   @db.Text
+  username      String?   @unique
+  role          UserRole? // Optional - set during onboarding
+  website       String?
+  github        String?
+  twitter       String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  projects      Project[]        // Projects created by user
+  comments      Comment[]        // Comments made by user
+  grants        Grant[]          // Grants created (if SPONSOR)
+  upvotes       Upvote[]         // Projects user has upvoted
+  threads       ForumThread[]    // Forum threads created
+  threadReplies ThreadReply[]    // Forum replies
+  threadUpvotes ThreadUpvote[]   // Thread upvotes
+  
+  @@map("users")
+}
+
+// ============================================
+// NEXTAUTH MODELS
+// ============================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// PROJECT MODEL
+// ============================================
+
+model Project {
+  id          String          @id @default(cuid())
+  title       String
+  tagline     String          @db.VarChar(140) // Short catchy description
+  description String          @db.Text         // Full markdown description
+  demoUrl     String?                          // Live demo link
+  repoUrl     String?                          // GitHub/GitLab repo
+  thumbnail   String?                          // Project thumbnail image
+  techStack   String[]                         // Array of technologies used
+  tags        String[]                         // Categorization tags
+  category    ProjectCategory @default(OTHER)  // Project category
+  status      ProjectStatus   @default(DRAFT)
+  
+  // Metrics
+  upvoteCount Int @default(0) // Denormalized for performance
+  viewCount   Int @default(0)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  publishedAt DateTime? // When project was first published
+  
+  // Relations
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  upvotes  Upvote[]
+  grantApplications GrantApplication[] // Grant applications for this project
+  
+  @@index([userId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([upvoteCount(sort: Desc)])
+  @@index([category, status])
+  @@map("projects")
+}
+
+// ============================================
+// UPVOTE MODEL (Join table for unique upvotes)
+// ============================================
+
+model Upvote {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, projectId]) // Each user can only upvote once per project
+  @@map("upvotes")
+}
+
+// ============================================
+// COMMENT MODEL
+// ============================================
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Self-referential for nested replies
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  
+  // Relations
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("comments")
+}
+
+// ============================================
+// GRANT MODEL
+// ============================================
+
+model Grant {
+  id          String      @id @default(cuid())
+  title       String
+  description String      @db.Text    // Full details, requirements, etc.
+  amount      Decimal     @db.Decimal(10, 2) // Grant amount in USD
+  currency    String      @default("USD")
+  status      GrantStatus @default(DRAFT)
+  
+  // Requirements & Details
+  requirements  String?   @db.Text  // Eligibility requirements
+  deadline      DateTime?           // Application deadline
+  maxRecipients Int       @default(1) // How many can receive this grant
+  
+  // External links
+  applicationUrl String?  // External application form if any
+  websiteUrl     String?  // Sponsor's website
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  sponsorId String
+  sponsor   User   @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  applications GrantApplication[] // Applications for this grant
+  
+  @@index([status, deadline])
+  @@index([sponsorId])
+  @@map("grants")
+}
+
+// ============================================
+// GRANT APPLICATION MODEL
+// ============================================
+
+enum ApplicationStatus {
+  PENDING   // Application submitted, awaiting review
+  REVIEWING // Under active consideration
+  APPROVED  // Application approved
+  REJECTED  // Application rejected
+  WITHDRAWN // Applicant withdrew
+}
+
+model GrantApplication {
+  id        String            @id @default(cuid())
+  status    ApplicationStatus @default(PENDING)
+  message   String?           @db.Text // Optional message from applicant
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  grantId   String
+  grant     Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, grantId]) // Each project can only apply once per grant
+  @@index([grantId, status])
+  @@index([projectId])
+  @@map("grant_applications")
+}
+
+// ============================================
+// FORUM THREAD MODEL
+// ============================================
+
+enum ForumCategory {
+  GENERAL      // General discussions
+  VIBE_CHECKS  // Share your vibe, get feedback
+  SHOW_TELL    // Show off your work
+  TECHNICAL    // Technical help and questions
+}
+
+model ForumThread {
+  id          String        @id @default(cuid())
+  title       String
+  content     String        @db.Text
+  category    ForumCategory @default(GENERAL)
+  isPinned    Boolean       @default(false)
+  upvoteCount Int           @default(0)
+  replyCount  Int           @default(0)
+  viewCount   Int           @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  userId  String
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies ThreadReply[]
+  upvotes ThreadUpvote[]
+  
+  @@index([category, createdAt(sort: Desc)])
+  @@index([upvoteCount(sort: Desc)])
+  @@index([userId])
+  @@map("forum_threads")
+}
+
+model ThreadReply {
+  id      String @id @default(cuid())
+  content String @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Self-referential for nested replies
+  parentId String?
+  parent   ThreadReply?  @relation("ReplyToReply", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  ThreadReply[] @relation("ReplyToReply")
+  
+  // Relations
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threadId String
+  thread   ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  
+  @@index([threadId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("thread_replies")
+}
+
+model ThreadUpvote {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threadId String
+  thread   ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, threadId])
+  @@map("thread_upvotes")
+}
+
+// ============================================
+// TAG MODEL (For better tag management)
+// ============================================
+
+model Tag {
+  id          String @id @default(cuid())
+  name        String @unique
+  slug        String @unique
+  description String?
+  color       String? // Hex color for display
+  usageCount  Int    @default(0) // Denormalized count
+  
+  createdAt DateTime @default(now())
+  
+  @@map("tags")
+}
