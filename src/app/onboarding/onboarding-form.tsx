@@ -2,11 +2,8 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { setUserRole, type OnboardingState } from "@/actions/users";
 import { Code2, Wallet, ArrowRight, Loader2, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface OnboardingFormProps {
   userName: string;
@@ -37,8 +34,6 @@ function SubmitButton({ role }: { role: string }) {
 }
 
 export function OnboardingForm({ userName }: OnboardingFormProps) {
-  const router = useRouter();
-  const { update } = useSession();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [state, formAction] = useFormState<OnboardingState | null, FormData>(
     setUserRole,
@@ -48,13 +43,10 @@ export function OnboardingForm({ userName }: OnboardingFormProps) {
   useEffect(() => {
     if (state?.success && !isRedirecting) {
       setIsRedirecting(true);
-      // Update the session to reflect the new role, then redirect
-      update().then(() => {
-        // Use window.location for a full page reload to avoid stale session
-        window.location.href = "/";
-      });
+      // Full page reload to get fresh session
+      window.location.href = "/";
     }
-  }, [state, update, isRedirecting]);
+  }, [state, isRedirecting]);
 
   if (isRedirecting) {
     return (
