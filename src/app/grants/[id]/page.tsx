@@ -321,10 +321,10 @@ export default async function GrantDetailPage({ params }: GrantDetailPageProps) 
                       {isDeadlinePassed ? "Deadline Passed" : "Deadline"}
                     </div>
                     <div className="text-xs text-[var(--vamp-grey)]">
-                      {format(new Date(grant.deadline), "MMMM d, yyyy")}
+                      {format(new Date(grant.deadline!), "MMMM d, yyyy")}
                       {!isDeadlinePassed && (
                         <span className="ml-1">
-                          ({formatDistanceToNow(new Date(grant.deadline), { addSuffix: true })})
+                          ({formatDistanceToNow(new Date(grant.deadline!), { addSuffix: true })})
                         </span>
                       )}
                     </div>

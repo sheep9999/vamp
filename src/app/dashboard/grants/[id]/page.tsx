@@ -142,7 +142,7 @@ export default async function GrantManagePage({ params }: GrantManagePageProps) 
             <div className="text-sm text-[var(--vamp-grey)] mb-1">Deadline</div>
             <div className="font-semibold text-[var(--vamp-black)] flex items-center gap-1">
               <Calendar className="w-4 h-4 text-[var(--vamp-orange)]" />
-              {format(new Date(grant.deadline), "MMM d, yyyy")}
+              {grant.deadline ? format(new Date(grant.deadline), "MMM d, yyyy") : "No deadline"}
             </div>
           </div>
           <div>

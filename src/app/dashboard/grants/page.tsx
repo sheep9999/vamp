@@ -204,7 +204,7 @@ export default async function ManageGrantsPage() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          Deadline: {format(new Date(grant.deadline), "MMM d, yyyy")}
+                          Deadline: {grant.deadline ? format(new Date(grant.deadline), "MMM d, yyyy") : "None"}
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
