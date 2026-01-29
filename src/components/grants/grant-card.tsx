@@ -93,9 +93,9 @@ export function GrantCard({ grant }: GrantCardProps) {
               <div className={`flex items-center gap-1 ${isDeadlineSoon ? "text-red-500 font-medium" : ""}`}>
                 <Calendar className="w-3.5 h-3.5" />
                 {isDeadlineSoon ? (
-                  <span>Ends {formatDistanceToNow(new Date(grant.deadline), { addSuffix: true })}</span>
+                  <span>Ends {formatDistanceToNow(new Date(grant.deadline!), { addSuffix: true })}</span>
                 ) : (
-                  <span>{format(new Date(grant.deadline), "MMM d, yyyy")}</span>
+                  <span>{format(new Date(grant.deadline!), "MMM d, yyyy")}</span>
                 )}
               </div>
             )}
